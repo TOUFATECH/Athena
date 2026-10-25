@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Athena</title>
+  <meta name="description" content="Athena — surveillance des sites web TOUFATECH : statut en direct, historique, incidents, maintenance et alertes.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0e1414">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="apple-touch-icon" href="/assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <style>:root{color-scheme:light}[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-in">
+    <svg class="mark" viewBox="0 0 64 64"><rect width="64" height="64" rx="16"/><path class="crest" d="M44 19.5 C40 13 33 10 26 10.5 C17 11.5 10.5 18 9.5 27 C9 32 10 37 12.5 41 C12.5 33 14.5 26.5 19 22.5 C24.5 17.8 33 16.6 44 19.5 Z"/><path class="helm" d="M14 53 C16.5 49 16.5 44 16 39 C15.5 31 19 24.5 26 21.8 C30 20.3 34 20 37.5 20.4 C45 21.3 51 27 51 35 L51 47.5 C51 49 50 50 48.5 50 L47 50 L47 38 L42.5 38 L42.5 53 Z"/><path class="eye" d="M35.5 32 L47 32 L47 38 L35.5 38 C33.8 38 32.5 36.7 32.5 35 C32.5 33.3 33.8 32 35.5 32 Z"/></svg>
+    <span class="word">Athena</span>
+    <div class="loader"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <button class="logo" id="home" type="button" aria-label="Athena, retour à mes sites">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16"/><path class="crest" d="M44 19.5 C40 13 33 10 26 10.5 C17 11.5 10.5 18 9.5 27 C9 32 10 37 12.5 41 C12.5 33 14.5 26.5 19 22.5 C24.5 17.8 33 16.6 44 19.5 Z"/><path class="helm" d="M14 53 C16.5 49 16.5 44 16 39 C15.5 31 19 24.5 26 21.8 C30 20.3 34 20 37.5 20.4 C45 21.3 51 27 51 35 L51 47.5 C51 49 50 50 48.5 50 L47 50 L47 38 L42.5 38 L42.5 53 Z"/><path class="eye" d="M35.5 32 L47 32 L47 38 L35.5 38 C33.8 38 32.5 36.7 32.5 35 C32.5 33.3 33.8 32 35.5 32 Z"/></svg>
+      <span class="word">Athena</span>
+    </button>
+    <div class="head-r dacts" id="headR" hidden>
+      <div class="who"><span id="whoEmail"></span><button class="btn sm" id="logoutBtn" type="button">Déconnexion</button></div>
+      <button class="btn solid" id="addBtn" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke-linecap="round"/></svg>
+        Ajouter
+      </button>
+    </div>
+  </header>
+
+  <section id="auth" class="auth" hidden>
+    <form class="auth-card" id="authForm" novalidate>
+      <h2 id="authTitle">Connexion</h2>
+      <p class="hint" id="authHint">Accès réservé aux comptes autorisés.</p>
+      <label class="field" id="emailField">E-mail
+        <input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required>
+      </label>
+      <label class="field" id="pwField">Mot de passe
+        <input id="a-pw" type="password" autocomplete="current-password" minlength="8" required>
+      </label>
+      <p class="err" id="authErr" hidden></p>
+      <p class="ok-msg" id="authOk" hidden></p>
+      <button class="btn solid" id="authSubmit" type="submit">Se connecter</button>
+      <div class="auth-foot">
+        <button class="linkbtn" type="button" id="toSignup">Créer mon compte</button>
+        <button class="linkbtn" type="button" id="toReset">Mot de passe oublié</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="denied" class="auth" hidden>
+    <div class="auth-card">
+      <h2>Accès refusé</h2>
+      <p class="hint" id="deniedText">Ce compte n'est pas autorisé sur Athena.</p>
+      <button class="btn" type="button" id="deniedLogout">Changer de compte</button>
+    </div>
+  </section>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section id="dash" class="stack" style="gap:22px" hidden>
+    <div class="bar">
+      <h1>Mes sites</h1>
+      <div class="tools">
+        <label class="search">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3" stroke-linecap="round"/></svg>
+          <input id="q" type="search" placeholder="Rechercher" aria-label="Rechercher un site" autocomplete="off">
+        </label>
+        <button class="btn icon" id="refreshBtn" type="button" title="Actualiser" aria-label="Actualiser les statuts">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M13.5 8A5.5 5.5 0 1 1 11.9 4.1M13.5 2.5v3h-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="chips" id="chips" hidden></div>
+    <div class="grid" id="grid" aria-live="polite"></div>
+    <div class="empty" id="empty" hidden><b>Aucun site pour l'instant</b>Appuie sur « Ajouter » pour enregistrer ton premier lien.</div>
+  </section>
+
+  <section id="detail" class="stack" style="gap:20px" hidden></section>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <form class="sheet" id="form" novalidate role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <h2 id="formTitle">Nouveau site</h2>
+    <div class="logo-pick">
+      <div class="ico" id="logoPrev"></div>
+      <div>
+        <div class="acts">
+          <button type="button" class="btn sm" id="pickLogo">Choisir un logo</button>
+          <button type="button" class="btn sm" id="dropLogo" hidden>Retirer</button>
+        </div>
+        <p class="hint" style="margin-top:4px">Facultatif · sinon le favicon du site est utilisé</p>
+      </div>
+      <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+    </div>
+    <label class="field">Nom
+      <input id="f-name" maxlength="80" placeholder="Mon site" autocomplete="off">
+    </label>
+    <label class="field">Adresse
+      <input id="f-url" class="mono" maxlength="500" placeholder="monsite.com" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+    <label class="field">Type de site
+      <select id="f-cat"></select>
+    </label>
+    <label class="field">Note
+      <textarea id="f-note" maxlength="300" placeholder="Facultatif"></textarea>
+    </label>
+    <p class="err" id="formErr" hidden></p>
+    <div class="row-end">
+      <button type="button" class="btn" id="cancelBtn">Annuler</button>
+      <button type="submit" class="btn solid" id="saveBtn">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/assets/config.js"></script>
+<script src="/assets/app.js"></script>
+</body>
+</html>

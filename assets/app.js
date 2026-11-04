@@ -142,10 +142,12 @@
     if (m) {
       if (m.state === "paused") return { k: "idle", label: "En pause" };
       if (m.in_maintenance && m.state !== "down") return { k: "warn", label: "Maintenance" };
-      if (m.state === "down") return { k: "down", label: "Hors ligne", ms: null, code: m.last_status };
-      if (m.fail_count > 0) return { k: "warn", label: `Échec ${m.fail_count}/${m.retries}` };
+      if (m.state === "maintenance") return { k: "warn", label: "Maintenance (site)", why: m.last_note };
+      if (m.state === "blocked") return { k: "idle", label: "Bloqué par Cloudflare", why: "Athena ne voit pas le vrai site : statut réel inconnu." };
+      if (m.state === "down") return { k: "down", label: "Hors ligne", ms: null, code: m.last_status, why: m.last_error };
+      if (m.fail_count > 0) return { k: "warn", label: `Échec ${m.fail_count}/${m.retries}`, why: m.last_error };
       if (m.state === "degraded") return { k: "warn", label: "Lent", ms: m.last_ms };
-      if (m.state === "up") return { k: "up", label: m.last_note === "Protégé par Cloudflare" ? "En ligne · Cloudflare" : "En ligne", ms: m.last_ms };
+      if (m.state === "up") return { k: "up", label: "En ligne", ms: m.last_ms };
       return { k: "check", label: "1er contrôle en cours…" };
     }
     return mon.down ? { k: "idle", label: "Statut indisponible" } : { k: "check", label: "Vérification…" };
@@ -162,7 +164,7 @@
   function renderStats() {
     const n = S.sites.length, ov = mon.ov;
     let up = 0, down = 0;
-    for (const s of S.sites) { const k = statusOf(s).k; if (k === "up" || k === "warn") up++; else if (k === "down") down++; }
+    for (const s of S.sites) { const mm = ov && ov.byId[s.id]; const k = statusOf(s).k; if (mm && !mm.paused && (mm.state === "up" || mm.state === "degraded")) up++; else if (k === "down") down++; }
     const cell = (l, v, extra = "") => `<div class="stat"><span class="l">${l}</span><span class="v">${v}${extra}</span></div>`;
     $("stats").innerHTML =
       cell("Sites", n) +
@@ -215,6 +217,7 @@
           <button type="button" class="more" data-act="menu" aria-label="Options pour ${esc(s.name)}" aria-expanded="${S.menu === s.id}">${I.dots}</button>
         </div>
         ${beatsHTML(s)}
+        ${st.why ? `<p class="why">${esc(st.why)}</p>` : ""}
         ${S.confirm === s.id ? `<div class="confirm">Supprimer ce site et son historique ?
           <button type="button" class="btn danger sm" data-act="del-yes">Supprimer</button>
           <button type="button" class="btn sm" data-act="del-no">Annuler</button></div>` : ""}
@@ -252,6 +255,9 @@
     D.loading = !silent; if (!silent) renderDetail();
     try {
       D.data = await rpc("detail", { id: D.id, period: D.period, fails: D.fails });
+      if (D.data && D.data.monitor.state === "blocked" && !D.probe && !S.readOnly) {
+        rpc("probe_settings").then(r => { D.probe = r; renderDetail(); }).catch(() => {});
+      }
       D.err = D.data ? null : "Ce site n'est pas encore surveillé. Réessaie dans une minute.";
     } catch (e) { D.err = errText(e); netFail(e); }
     finally { D.loading = false; renderDetail(); }
@@ -336,6 +342,8 @@
         <div class="kpi"><div class="l">Dernier contrôle</div><div class="v" style="font-size:17px;padding-top:4px">${esc(ago(m.last_check_at))}</div><div class="s">${m.last_status ? "Code " + m.last_status + " · " : ""}${fmtMs(m.last_ms)}</div></div>
       </div>
       ${m.last_error ? `<div class="box" style="border-color:color-mix(in srgb,var(--down) 40%,var(--line))"><h3>Raison du dernier échec</h3><p class="hint" style="color:var(--ink)">${esc(m.last_error)}</p></div>` : ""}
+      ${m.state === "blocked" ? blockedBox(s) : ""}
+      ${m.state === "maintenance" ? `<div class="box" style="border-color:color-mix(in srgb,var(--warn) 45%,var(--line))"><h3>Le site affiche sa page de maintenance <span class="badge mid">Code ${esc(m.last_status)}</span></h3><p class="hint">${esc(m.last_note || "")}. Les visiteurs voient cette page à la place du site. Ce n'est pas compté comme une panne : pas d'incident, pas d'alerte, et ces contrôles sont exclus de la disponibilité. Dès que le site renverra un code 200, il repassera « En ligne ».</p></div>` : ""}
       ${d.in_maintenance ? `<div class="box"><h3>Maintenance en cours</h3><p class="hint">Les contrôles continuent mais ne comptent pas dans la disponibilité.</p></div>` : ""}
       <div class="box">
         <h3>Temps de réponse ${periodSeg()}</h3>
@@ -373,11 +381,30 @@
       <p class="hint">Disponibilité = contrôles réussis ÷ contrôles effectués sur la période, hors fenêtres de maintenance. Les périodes sans mesure ne comptent pas.</p>`;
   }
 
+
+  function blockedBox(s) {
+    const h = host(s.url), p = D.probe;
+    const expr = p ? `any(http.request.headers["${p.header.toLowerCase()}"][*] eq "${p.token}")` : "";
+    return `<div class="box" style="border-color:color-mix(in srgb,var(--idle) 60%,var(--line))">
+      <h3>Athena est bloquée par Cloudflare <span class="badge">Statut réel inconnu</span></h3>
+      <p class="hint">Cloudflare répond à Athena par sa page de vérification « Just a moment… » (code ${esc(D.data.monitor.last_status)}). Le vrai site n'est pas visible : il peut fonctionner comme être en panne. Ces contrôles ne comptent ni comme succès ni comme panne.</p>
+      ${S.readOnly ? "" : !p ? `<p class="hint">Chargement des réglages…</p>` : `
+      <p class="hint" style="color:var(--ink)">Pour une vérification fiable, autorise Athena dans Cloudflare :</p>
+      <ol class="steps">
+        <li>Cloudflare → domaine <b>${esc(h)}</b> → Sécurité → Règles de sécurité (WAF) → <b>Créer une règle</b> personnalisée.</li>
+        <li>Nom : « Athena ». Ouvre l'éditeur d'expression et colle :<code class="expr" id="cf-expr">${esc(expr)}</code><button class="btn sm" type="button" data-d="copy-expr">Copier l'expression</button></li>
+        <li>Action : <b>Ignorer (Skip)</b>. Coche toutes les protections proposées : règles personnalisées restantes, règles gérées, limitation de débit, Super Bot Fight Mode, Security Level et Browser Integrity Check. Déploie la règle.</li>
+        <li>Reviens ici et appuie sur « Vérifier maintenant ».</li>
+      </ol>
+      <p class="hint">Si le blocage continue, regarde Sécurité → Bots : le « Bot Fight Mode » gratuit ne peut pas être contourné par une règle, il faut le désactiver. L'expression contient un jeton secret qui ne laisse passer que les vérifications d'Athena : ne la partage pas.</p>`}
+    </div>`;
+  }
+
   function tabHisto(s, d) {
     const rows = d.checks.map(c => {
-      const k = c.ok ? (c.state === "degraded" ? "mid" : "ok") : (c.state === "pending" ? "mid" : "ko");
-      const lab = c.ok ? (c.state === "degraded" ? "Lent" : "OK") : (c.state === "pending" ? "Échec (nouvel essai)" : "Échec");
-      return `<tr><td class="m">${esc(dtf.format(new Date(c.at)))}<br><span style="color:var(--muted)">${esc(dtfs.format(new Date(c.at)))}</span></td><td><span class="st ${k}"><span class="dot ${k === "ok" ? "up" : k === "mid" ? "warn" : "down"}"></span>${lab}</span>${c.maintenance ? ` <span class="badge mid">maint.</span>` : ""}</td><td class="m">${c.status ?? "—"}</td><td class="m">${c.ms != null ? c.ms + " ms" : "—"}</td><td class="err">${esc(c.error || c.note || "")}</td><td class="m" style="color:var(--muted)">${esc(c.worker)}</td></tr>`;
+      const k = c.state === "maintenance" ? "mid" : c.state === "blocked" ? "idle" : c.ok ? (c.state === "degraded" ? "mid" : "ok") : (c.state === "pending" ? "mid" : "ko");
+      const lab = c.state === "maintenance" ? "Maintenance (site)" : c.state === "blocked" ? "Bloqué (Cloudflare)" : c.ok ? (c.state === "degraded" ? "Lent" : "OK") : (c.state === "pending" ? "Échec (nouvel essai)" : "Échec");
+      return `<tr><td class="m">${esc(dtf.format(new Date(c.at)))}<br><span style="color:var(--muted)">${esc(dtfs.format(new Date(c.at)))}</span></td><td><span class="st ${k}"><span class="dot ${k === "ok" ? "up" : k === "mid" ? "warn" : k === "idle" ? "" : "down"}"></span>${lab}</span>${c.maintenance ? ` <span class="badge mid">maint.</span>` : ""}</td><td class="m">${c.status ?? "—"}</td><td class="m">${c.ms != null ? c.ms + " ms" : "—"}</td><td class="err">${esc(c.error || c.note || "")}</td><td class="m" style="color:var(--muted)">${esc(c.worker)}</td></tr>`;
     }).join("");
     return `
       <div class="box">
@@ -503,6 +530,12 @@
     if (t.dataset.period) { D.period = t.dataset.period; loadDetail(); return; }
     const a = t.dataset.d, s = S.sites.find(x => x.id === D.id);
     if (a === "back") return closeDetail();
+    if (a === "copy-expr") {
+      const txt = $("cf-expr").textContent;
+      try { await navigator.clipboard.writeText(txt); toast("Expression copiée"); }
+      catch { const r = document.createRange(); r.selectNodeContents($("cf-expr")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast("Expression sélectionnée : copie-la"); }
+      return;
+    }
     if (a === "reload") return loadDetail();
     if (a === "shot") { toast("Nouvelle capture demandée"); return loadPreview(s.url, true); }
     const busy = async fn => { t.disabled = true; try { await fn(); } finally { if (t.isConnected) t.disabled = false; } };

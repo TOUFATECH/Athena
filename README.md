@@ -11,7 +11,7 @@ Surveillance des sites web TOUFATECH : statut en direct, historique des vérific
 | Domaine | Ce qui est en place |
 |---|---|
 | Moniteurs | HTTP(S) GET/HEAD/POST, mot-clé (présent ou absent), DNS. Fréquence, délai, tentatives, codes attendus, seuil « lent », étiquettes, pause. |
-| Statuts | En ligne, lent (dégradé), hors ligne, en pause, inconnu. Dernier contrôle et raison du dernier échec. |
+| Statuts | En ligne, lent (dégradé), hors ligne, en pause, inconnu, **maintenance annoncée par le site** (503 + `Retry-After` ou page de maintenance : ni incident ni alerte) et **bloqué par Cloudflare** (page « Just a moment… » : statut réel inconnu, exclu de la disponibilité). Raison affichée sur chaque carte. |
 | Historique | Journal horodaté (code, temps, erreur, emplacement), filtres 24 h / 7 j / 30 j, échecs uniquement. Conservation 90 jours. |
 | Tableau de bord | Sites, en ligne, hors ligne, incidents ouverts, disponibilité 24 h, temps moyen, mini-historique par site. |
 | Incidents | Ouverture après N échecs consécutifs, fermeture au retour, chronologie, commentaires, statut, cause racine. |
@@ -22,6 +22,10 @@ Surveillance des sites web TOUFATECH : statut en direct, historique des vérific
 **Disponibilité** = contrôles réussis ÷ contrôles effectués sur la période, hors fenêtres de maintenance.
 
 Non inclus : alertes e-mail, ping ICMP et TCP, métriques serveur (nécessitent un agent), page de statut publique, multi-régions, exports.
+
+## Sites protégés par Cloudflare
+
+Athena envoie l'en-tête `X-Athena-Monitor` avec un jeton secret (stocké dans `athena.settings`, jamais dans ce dépôt). Pour qu'Athena voie le vrai site, créer dans Cloudflare une règle WAF personnalisée **Ignorer (Skip)** sur cet en-tête. L'expression exacte, jeton compris, est affichée dans la fiche du site (onglet Aperçu) quand il est bloqué. Le « Bot Fight Mode » gratuit ne peut pas être contourné par une règle.
 
 ## Configuration Supabase
 

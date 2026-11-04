@@ -326,3 +326,12 @@ html, body { min-height: 100%; }
 @media (max-width: 520px) { .who span { display: none; } }
 #headR { flex-wrap: nowrap; align-items: center; gap: 8px; }
 @media (max-width: 420px) { header .word { letter-spacing: .16em; font-size: 15px; } #headR .btn { padding: 0 11px; } }
+
+.why { margin: -6px 14px 12px; font-size: 12.5px; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.s-down .why { color: var(--down); }
+.beat i.maintenance { background: var(--warn); opacity: .5; }
+.beat i.blocked { background: var(--idle); opacity: .7; }
+.st.idle { color: var(--muted); }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; }
+.steps li { padding-left: 2px; }
+code.expr { display: block; font-family: var(--mono); font-size: 12px; background: var(--hover); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; margin: 6px 0 8px; user-select: all; }
